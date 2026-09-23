@@ -3,7 +3,6 @@ import random
 import time
 from dataclasses import dataclass
 
-
 @dataclass(frozen=True)
 class Tarea:
     id: int
@@ -40,72 +39,108 @@ def leer():
 
 
 def greedy(tareas):
-    tareas = sorted(tareas, key=lambda t: t.ganancia, reverse=True)
+    ordenadas = sorted(tareas, key=lambda t: t.ganancia, reverse=True)
     seleccion = []
 
-    for t in tareas:
+    for tarea in ordenadas:
         if all(
-            t.fin <= s.inicio or s.fin <= t.inicio
-            for s in seleccion
+            tarea.fin <= otra.inicio or otra.fin <= tarea.inicio
+            for otra in seleccion
         ):
-            seleccion.append(t)
+            seleccion.append(tarea)
 
-    seleccion.sort(key=lambda t: t.inicio)
     return sum(t.ganancia for t in seleccion), seleccion
 
-# Ordenamiento 
 
-def dp(tareas, binaria=False, clave=None):
+def dp_lineal(tareas, clave=None):
     tareas = sorted(tareas, key=clave or (lambda t: t.fin))
     n = len(tareas)
 
     if not n:
         return 0, []
 
-    p = [-1] * n
+    compatibles = [-1] * n
 
-    if binaria:
-        finales = [t.fin for t in tareas]
+    for i in range(n):
+        for j in range(i - 1, -1, -1):
+            if tareas[j].fin <= tareas[i].inicio:
+                compatibles[i] = j
+                break
 
-        for i, t in enumerate(tareas):
-            p[i] = bisect.bisect_right(
-                finales, t.inicio, 0, i
-            ) - 1
-    else:
-        for i in range(n):
-            for j in range(i - 1, -1, -1):
-                if tareas[j].fin <= tareas[i].inicio:
-                    p[i] = j
-                    break
+    dp = [0] * n
 
-    tabla = [0] * n
-    # desición 
     for i in range(n):
         tomar = tareas[i].ganancia
-        if p[i] != -1:
-            tomar += tabla[p[i]]
 
-        no_tomar = tabla[i - 1] if i else 0
-        tabla[i] = max(tomar, no_tomar)
+        if compatibles[i] != -1:
+            tomar += dp[compatibles[i]]
+
+        no_tomar = dp[i - 1] if i else 0
+
+        dp[i] = max(tomar, no_tomar)
 
     seleccion = []
     i = n - 1
 
     while i >= 0:
-        anterior = tabla[i - 1] if i else 0
+        anterior = dp[i - 1] if i else 0
 
-        if tabla[i] != anterior:
+        if dp[i] != anterior:
             seleccion.append(tareas[i])
-            i = p[i]
+            i = compatibles[i]
         else:
             i -= 1
 
     seleccion.reverse()
-    return tabla[-1], seleccion
+    return dp[-1], seleccion
+
+
+def dp_binaria(tareas):
+    tareas = sorted(tareas, key=lambda t: t.fin)
+    n = len(tareas)
+
+    if not n:
+        return 0, []
+
+    finales = [t.fin for t in tareas]
+    compatibles = [-1] * n
+
+    for i in range(n):
+        compatibles[i] = bisect.bisect_right(
+            finales, tareas[i].inicio, 0, i
+        ) - 1
+
+    dp = [0] * n
+
+    for i in range(n):
+        tomar = tareas[i].ganancia
+
+        if compatibles[i] != -1:
+            tomar += dp[compatibles[i]]
+
+        no_tomar = dp[i - 1] if i else 0
+
+        dp[i] = max(tomar, no_tomar)
+
+    seleccion = []
+    i = n - 1
+
+    while i >= 0:
+        anterior = dp[i - 1] if i else 0
+
+        if dp[i] != anterior:
+            seleccion.append(tareas[i])
+            i = compatibles[i]
+        else:
+            i -= 1
+
+    seleccion.reverse()
+    return dp[-1], seleccion
 
 
 def mostrar(nombre, resultado):
     ganancia, tareas = resultado
+
     print(f"\n{nombre}")
     print(f"Ganancia: {ganancia}")
     print("Tareas:", tareas)
@@ -113,26 +148,20 @@ def mostrar(nombre, resultado):
 
 def reto1():
     print("\nRETO 1")
-    print("Ingrese 4 o 5 tareas que demuestren la falla de Greedy.")
     tareas = leer()
 
-    g = greedy(tareas)
-    d = dp(tareas)
-
-    mostrar("Greedy", g)
-    mostrar("DP", d)
-
-    if g[0] < d[0]:
-        print("\nGreedy obtiene una ganancia menor que DP.")
-    else:
-        print("\nEste conjunto no demuestra la falla de Greedy.")
+    mostrar("Greedy", greedy(tareas))
+    mostrar("DP", dp_lineal(tareas))
 
 
 def reto2():
     print("\nRETO 2")
     tareas = leer()
 
-    print("\n1) Fin\n2) Inicio\n3) Ganancia")
+    print("\n1) Finalización")
+    print("2) Inicio")
+    print("3) Ganancia")
+
     opcion = input("Orden: ")
 
     claves = {
@@ -141,25 +170,27 @@ def reto2():
         "3": lambda t: -t.ganancia
     }
 
-    resultado = dp(tareas, clave=claves.get(opcion, claves["1"]))
+    resultado = dp_lineal(
+        tareas,
+        clave=claves.get(opcion, claves["1"])
+    )
+
     mostrar("Resultado", resultado)
 
-    correcto = dp(tareas)
-    print(f"Referencia por fin: {correcto[0]}")
+    correcto = dp_lineal(tareas)
+    print(f"Referencia por finalización: {correcto[0]}")
 
 
 def benchmark():
     n = 100_000
-    print(f"\nGenerando {n:,} tareas aleatorias...")
-
     tareas = generar(n)
 
     inicio = time.perf_counter()
-    b = dp(tareas)
+    b = dp_lineal(tareas)
     tiempo_b = time.perf_counter() - inicio
 
     inicio = time.perf_counter()
-    c = dp(tareas, binaria=True)
+    c = dp_binaria(tareas)
     tiempo_c = time.perf_counter() - inicio
 
     print("\nBENCHMARK")
@@ -188,11 +219,11 @@ def main():
         if opcion == "0":
             break
 
-        if opcion == "1":
+        elif opcion == "1":
             tareas = leer()
             mostrar("Greedy", greedy(tareas))
-            mostrar("DP lineal", dp(tareas))
-            mostrar("DP binaria", dp(tareas, binaria=True))
+            mostrar("DP lineal", dp_lineal(tareas))
+            mostrar("DP binaria", dp_binaria(tareas))
 
         elif opcion == "2":
             reto1()
