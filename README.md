@@ -1,273 +1,54 @@
-# Optimizador de tareas
+# README — Proyecto Integrador: Optimización de Tareas en un Clúster de Servidores
 
-Este README documenta la versión de prueba implementada en [test.py](test.py), donde se comparan varios enfoques para resolver el problema de selección de intervalos con ganancia.
+## 1. Descripción
 
-## Objetivo
-
-Dado un conjunto de tareas con:
-
-- inicio
-- fin
-- ganancia
-
-se busca elegir un subconjunto compatible que maximice la ganancia total sin solaparse en el tiempo.
-
-Este problema se conoce como Weighted Interval Scheduling.
-
----
-
-## Modelo de datos
-
-La estructura base es una dataclass llamada Tarea:
-
-- id: identificador único
-- inicio: momento en que comienza la tarea
-- fin: momento en que termina la tarea
-- ganancia: valor asociado
-
-La función no_se_solapan(a, b) define compatibilidad entre dos tareas:
-
-- una tarea es compatible si termina antes de que la otra empiece, o viceversa
-
-Es decir, no puede haber solapamiento de intervalos.
-
----
-
-## Funciones auxiliares
-
-### generar_tareas
-Genera tareas aleatorias con un valor semilla configurable para que el experimento sea reproducible.
-
-### mostrar_resultado
-Imprime la ganancia total y las tareas seleccionadas por cada enfoque.
-
----
-
-## Enfoque A: Greedy
-
-### Idea
-Ordenar las tareas por ganancia descendente y seleccionar las que no se solapen con las ya elegidas.
-
-### Resultado
-Es una estrategia rápida, pero no es óptima.
-
-### Qué falla
-Greedy maximiza la ganancia local de una tarea sin considerar que podría bloquear un conjunto de varias tareas menores que juntas generan más beneficio.
-
-### Complejidad
-- Ordenamiento: O(n log n)
-- Verificación de solapamientos: O(n²) en el peor caso
-
----
-
-## Enfoque B: Programación Dinámica con búsqueda lineal
-
-### Idea
-Se ordenan las tareas por tiempo de finalización ascendente y se calcula la mejor ganancia acumulada tarea por tarea.
-
-### Función clave
-_la_ultima_compatible_lineal
-
-Busca, recorriendo hacia atrás, la última tarea que termina antes de que comience la tarea actual.
-
-### Recurrencia
-
-La ecuación central es:
-
-- dp[i] = max(ganancia[i] + dp[última_compatible(i)], dp[i - 1])
-
-Esto significa:
-
-- tomar la tarea actual, o
-- no tomarla y conservar la mejor solución anterior
-
-### Complejidad
-- Ordenamiento: O(n log n)
-- Búsqueda compatible: O(n²) en el peor caso
-- Total: O(n²)
-
----
-
-## Enfoque C: Programación Dinámica con búsqueda binaria
-
-### Idea
-Es la misma lógica del enfoque B, pero usando búsqueda binaria para localizar la última tarea compatible.
-
-### Función clave
-_la_ultima_compatible_binaria
-
-Usa bisect_right para hallar la posición exacta de la última tarea que finaliza antes del inicio actual.
-
-### Ventaja
-Reduce el costo de compatibilidad de O(n) a O(log n) por tarea.
-
-### Complejidad
-- Ordenamiento: O(n log n)
-- Búsqueda compatible: O(log n) por tarea
-- Total: O(n log n)
-
----
-
-## Reconstrucción de la solución
-
-La función _reconstruir_solucion sigue hacia atrás la decisión tomada en cada paso y reconstruye la lista de tareas elegidas.
-
-Esto permite devolver no solo la ganancia máxima, sino también el conjunto exacto de tareas que la alcanza.
-
----
-
-## Reto 1: la trampa de la avaricia
-
-Se construye un caso manual donde Greedy falla.
-
-### Ejemplo conceptual
-
-- A: [0, 10] ganancia 50
-- B: [0, 4] ganancia 20
-- C: [4, 8] ganancia 20
-- D: [8, 10] ganancia 15
-
-Greedy toma A y obtiene 50, pero la mejor solución real es:
-
-- B + C + D = 55
-
-### Lección
-La mejor decisión local no siempre genera la mejor solución global.
-
----
-
-## Reto 2: el orden del caos
-
-Este reto muestra que el orden de las tareas no es un detalle secundario.
-
-Si se ordena por:
-
-- fin
-- inicio
-- ganancia
-
-las propiedades del DP cambian. El algoritmo depende de que el arreglo esté ordenado por tiempo de finalización para que los subproblemas queden bien definidos.
-
-### Conclusión
-La invariante del DP solo se cumple si las tareas están ordenadas por fin.
-
----
-
-## Reto 3: la decisión del algoritmo
-
-La línea clave es esta:
-
-- dp[i] = max(ganancia[i] + dp[última_compatible(i)], dp[i - 1])
-
-Esto representa la decisión de:
-
-- tomar la tarea actual, o
-- no tomarla
-
-La solución óptima emerge de comparar ambas opciones y elegir la mejor.
-
----
-
-## Reto 4: prueba de estrés
-
-Se genera un benchmark con 100,000 tareas para comparar la velocidad de ambos enfoques exactos.
-
-### Observación
-La versión con búsqueda binaria es varias órdenes de magnitud más rápida que la lineal.
-
-### Resultado esperado
-- Enfoque B: O(n²)
-- Enfoque C: O(n log n)
-
-En pruebas grandes, la diferencia de tiempo es muy notable.
-
----
-
-## Cómo ejecutar
-
-Desde la raíz del proyecto:
-
-```bash
-python test.py
-```
-
-El script ejecuta una demo general, los retos y la prueba de estrés.
-
----
-
-## Resumen final
-
-- Greedy es rápido, pero no garantiza optimalidad
-- DP lineal es exacta, pero más costosa
-- DP binaria es exacta y mucho más eficiente
-- El orden por fin es esencial para la validez del algoritmo
-- La solución correcta se basa en comparar “tomar” vs “no tomar” cada tarea
-
-Este archivo sirve como una demostración didáctica del problema y de cómo evolucionan las soluciones desde la idea voraz hasta la versión optimizada con programación dinámica.
-# README — Optimización de Tareas en un Clúster de Servidores
-
-## 1. ¿Qué hace este proyecto?
-
-El programa busca **seleccionar tareas que no se solapen entre sí para maximizar la ganancia total**.
+El programa busca **seleccionar un conjunto de tareas que no se solapen y que maximicen la ganancia total**.
 
 Cada tarea tiene:
 
-```python
-Tarea(
-    id,
-    inicio,
-    fin,
-    ganancia
-)
-```
+* `id`: identificador.
+* `inicio`: momento en que comienza.
+* `fin`: momento en que termina.
+* `ganancia`: beneficio obtenido al ejecutar la tarea.
 
-Por ejemplo:
-
-```text
-T0: inicio = 1, fin = 4, ganancia = 20
-```
-
-Significa que la tarea ocupa el servidor desde el tiempo `1` hasta el `4` y genera una ganancia de `20`.
-
-El servidor solamente puede ejecutar **una tarea a la vez**, por lo que no podemos seleccionar dos tareas que se ejecuten simultáneamente.
+El servidor solo puede ejecutar **una tarea a la vez**, por lo que las tareas seleccionadas deben ser compatibles entre sí.
 
 ---
 
 # 2. ¿Qué significa que dos tareas se solapen?
 
-Dos tareas se **solapan** cuando sus intervalos de ejecución se cruzan.
+Dos tareas se solapan cuando necesitan utilizar el servidor durante un mismo intervalo de tiempo.
 
-Por ejemplo:
+### Ejemplo de solapamiento
 
 ```text
-T1: 1 ───── 5
-T2:       3 ───── 7
+T1: 1 ───────── 5
+T2:       3 ───────── 7
 ```
 
-Se solapan porque ambas necesitan el servidor entre `3` y `5`.
+Entre los tiempos `3` y `5`, ambas necesitan el servidor.
 
-Por lo tanto, **no pueden seleccionarse las dos**.
+Por lo tanto:
 
-### Ejemplo de tareas compatibles
+```text
+T1 + T2 → NO se pueden ejecutar juntas
+```
+
+### Ejemplo sin solapamiento
 
 ```text
 T1: 1 ─── 4
 T2:         4 ─── 7
 ```
 
-Estas sí pueden ejecutarse juntas porque:
-
-```python
-T1.fin <= T2.inicio
-```
-
-es decir:
+Estas sí son compatibles porque:
 
 ```text
-4 <= 4 → True
+T1.fin <= T2.inicio
+4 <= 4
 ```
 
-En nuestro código, la condición que comprueba esto es:
+En el código esta condición aparece en:
 
 ```python
 if tareas[j].fin <= tareas[i].inicio:
@@ -275,25 +56,21 @@ if tareas[j].fin <= tareas[i].inicio:
 
 ### Regla para recordar
 
-```text
-fin de una tarea <= inicio de la otra
-        ↓
-    compatibles
-```
-
-Si no se cumple, las tareas se solapan.
+> Si una tarea termina antes o exactamente cuando comienza la otra, ambas pueden seleccionarse.
 
 ---
 
-# 3. Las tres soluciones
+# 3. Los tres enfoques
 
-El proyecto implementa tres enfoques:
+El proyecto utiliza tres estrategias:
 
-| Enfoque | Función                  | Idea principal                               |
-| ------- | ------------------------ | -------------------------------------------- |
-| A       | `greedy()`               | Elegir primero las tareas con mayor ganancia |
-| B       | `dp(..., binaria=False)` | Programación dinámica + búsqueda lineal      |
-| C       | `dp(..., binaria=True)`  | Programación dinámica + búsqueda binaria     |
+| Enfoque                   | Función        | Complejidad |
+| ------------------------- | -------------- | ----------- |
+| A — Greedy                | `greedy()`     | O(n log n)  |
+| B — DP + búsqueda lineal  | `dp_lineal()`  | O(n²)       |
+| C — DP + búsqueda binaria | `dp_binaria()` | O(n log n)  |
+
+La diferencia principal entre B y C está en **cómo encuentran la última tarea compatible**.
 
 ---
 
@@ -305,10 +82,10 @@ La función es:
 def greedy(tareas):
 ```
 
-Primero ordena las tareas por ganancia:
+Primero ordena las tareas por ganancia descendente:
 
 ```python
-tareas = sorted(tareas, key=lambda t: t.ganancia, reverse=True)
+ordenadas = sorted(tareas, key=lambda t: t.ganancia, reverse=True)
 ```
 
 Es decir:
@@ -319,80 +96,81 @@ mayor ganancia
    primero
 ```
 
-Después intenta agregar cada tarea:
+Después intenta seleccionar cada tarea verificando que no se solape con las que ya fueron seleccionadas:
 
 ```python
 if all(
-    t.fin <= s.inicio or s.fin <= t.inicio
-    for s in seleccion
+    tarea.fin <= otra.inicio or otra.fin <= tarea.inicio
+    for otra in seleccion
 ):
-    seleccion.append(t)
 ```
-
-Esta parte comprueba que la nueva tarea **no se solape con ninguna tarea que ya fue seleccionada**.
 
 ### ¿Qué deben saber explicar?
 
-Greedy es rápido y sencillo, pero **no garantiza la ganancia óptima**.
+Greedy toma decisiones basándose en la **ganancia inmediata**.
 
-El Reto 1 demuestra precisamente esto.
+El problema es que una tarea con una ganancia alta puede ocupar un intervalo que impida seleccionar varias tareas cuya ganancia combinada sea mayor.
+
+Por eso **Greedy no garantiza la solución óptima**.
 
 ---
 
-# 5. Reto 1 — Demostrar que Greedy puede fallar
+# 5. Reto 1 — Demostrar que Greedy falla
 
-La función es:
+La función correspondiente es:
 
 ```python
 def reto1():
 ```
 
-Aquí se introducen manualmente 4 o 5 tareas.
-
-Después se ejecutan:
+Se introducen tareas y se calculan dos soluciones:
 
 ```python
-g = greedy(tareas)
-d = dp(tareas)
+mostrar("Greedy", greedy(tareas))
+mostrar("DP", dp_lineal(tareas))
 ```
 
-Y se comparan:
-
-```python
-if g[0] < d[0]:
-```
-
-La idea es demostrar:
+La comparación busca demostrar:
 
 ```text
-Greedy < DP
+Ganancia Greedy < Ganancia DP
 ```
 
-### Qué decir
+### ¿Qué deben decir?
 
-> "Greedy toma las tareas según la mayor ganancia inmediata, pero una tarea con una ganancia alta puede impedir seleccionar varias tareas que juntas produzcan una ganancia mayor."
+> "Greedy selecciona según la mejor ganancia individual disponible, pero esa decisión puede impedir seleccionar varias tareas compatibles cuya ganancia total sea mayor."
 
-No necesitan decir que Greedy está "mal"; **es una estrategia que no garantiza el óptimo para este problema**.
+El objetivo del Reto 1 es demostrar con un caso concreto que la estrategia Greedy puede obtener una solución inferior a la programación dinámica. 
 
 ---
 
-# 6. Enfoque B y C — Programación Dinámica
+# 6. Programación Dinámica
 
-Ambos están dentro de:
+Los enfoques B y C utilizan programación dinámica.
 
-```python
-def dp(tareas, binaria=False, clave=None):
+La idea general es que para cada tarea existen dos posibilidades:
+
+```text
+              Tarea actual
+                  │
+          ┌───────┴───────┐
+          ↓               ↓
+        TOMAR          NO TOMAR
+          │               │
+    ganar + DP        DP anterior
+          │               │
+          └───────┬───────┘
+                  ↓
+                 MAX
 ```
 
-La diferencia principal entre B y C está en **cómo encuentran la última tarea compatible**.
-
-Pero antes hay algo fundamental.
+La programación dinámica conserva la mejor ganancia encontrada hasta cada posición.
 
 ---
 
-# 7. Ordenamiento por tiempo de finalización
+# 7. Ordenamiento por finalización
 
-Esta es una de las líneas más importantes del proyecto:
+Esta es una de las líneas **más importantes del proyecto**:
 
 ```python
 tareas = sorted(tareas, key=clave or (lambda t: t.fin))
@@ -404,41 +182,53 @@ Por defecto, las tareas se ordenan por:
 t.fin
 ```
 
-Es decir:
+es decir:
 
 ```text
 fin menor → fin mayor
 ```
 
-Esto es necesario para que la programación dinámica pueda encontrar correctamente las tareas compatibles anteriores.
+Este orden es fundamental para los enfoques B y C porque permite buscar correctamente las tareas compatibles anteriores.
 
-### ⭐ ESTA LÍNEA ES CLAVE PARA EL RETO 2
-
-El profesor puede pedir modificarla.
-
-Por inicio:
-
-```python
-tareas = sorted(tareas, key=lambda t: t.inicio)
-```
-
-Por ganancia:
-
-```python
-tareas = sorted(tareas, key=lambda t: -t.ganancia)
-```
-
-La idea del Reto 2 es demostrar que **la DP depende de que las tareas estén ordenadas por tiempo de finalización**.
+### ⚠️ Esta línea es la principal del Reto 2.
 
 ---
 
-# 8. ¿Por qué el orden por FIN es necesario?
+# 8. Reto 2 — Cambiar el ordenamiento
 
-La DP necesita responder:
+El Reto 2 pide demostrar qué sucede cuando se modifica el ordenamiento de las tareas. El enunciado plantea cambiar el orden por tiempo de finalización a **tiempo de inicio o ganancia** y explicar por qué la programación dinámica depende del orden por finalización. 
 
-> "Si tomo esta tarea, ¿cuál es la última tarea que puedo ejecutar antes de ella?"
+La línea que deben señalar es:
 
-Por eso necesitamos buscar una tarea que cumpla:
+```python
+tareas = sorted(tareas, key=clave or (lambda t: t.fin))
+```
+
+### Orden correcto
+
+```python
+lambda t: t.fin
+```
+
+### Cambiar a inicio
+
+```python
+lambda t: t.inicio
+```
+
+### Cambiar a ganancia
+
+```python
+lambda t: -t.ganancia
+```
+
+---
+
+## ¿Por qué el orden por `fin` es necesario?
+
+La programación dinámica necesita encontrar la última tarea compatible con la actual.
+
+La condición es:
 
 ```python
 tareas[j].fin <= tareas[i].inicio
@@ -446,89 +236,71 @@ tareas[j].fin <= tareas[i].inicio
 
 Es decir:
 
-```text
-la tarea anterior termina
-antes o exactamente cuando
-comienza la nueva tarea
-```
+> "La tarea anterior debe haber terminado antes de que empiece la tarea actual."
 
-Al ordenar por `fin`, las posiciones anteriores tienen la estructura temporal que la DP necesita.
+Cuando las tareas están ordenadas por `fin`, el algoritmo puede buscar correctamente entre las tareas anteriores.
 
-Si ordenamos por `inicio` o por `ganancia`, estar antes en la lista **ya no garantiza que la tarea haya terminado antes**.
+Si las ordenamos por `inicio` o por `ganancia`, **estar antes en la lista ya no garantiza que una tarea haya terminado antes**.
 
-Por eso el algoritmo puede producir un resultado que no representa correctamente la solución óptima.
+Por eso se rompe la estructura sobre la que se basa la recurrencia.
 
----
+### Para la exposición
 
-# 9. Reto 2 — Ordenamiento
+Si preguntan:
 
-La función es:
+> "¿Qué línea controla el Reto 2?"
 
-```python
-def reto2():
-```
-
-Tiene tres opciones:
-
-```python
-print("\n1) Fin\n2) Inicio\n3) Ganancia")
-```
-
-Las opciones están definidas aquí:
-
-```python
-claves = {
-    "1": lambda t: t.fin,
-    "2": lambda t: t.inicio,
-    "3": lambda t: -t.ganancia
-}
-```
-
-### Lo que deben señalar
-
-La línea principal:
+Señalar:
 
 ```python
 tareas = sorted(tareas, key=clave or (lambda t: t.fin))
 ```
 
-Y después esta:
+Y explicar:
 
-```python
-if tareas[j].fin <= tareas[i].inicio:
-```
-
-### Qué explicar
-
-> "El orden por finalización es necesario porque la programación dinámica busca la última tarea compatible entre las tareas anteriores. Si cambiamos el orden por inicio o ganancia, las posiciones dejan de representar correctamente el orden temporal y la recurrencia puede utilizar información incorrecta."
+> "Esta línea determina el orden en que la programación dinámica procesa las tareas. El orden correcto es por finalización ascendente."
 
 ---
 
-# 10. Búsqueda de la tarea compatible
+# 9. Enfoque B — DP + búsqueda lineal
 
-Aquí está la diferencia entre B y C.
+La función es:
 
-## B — Búsqueda lineal
+```python
+def dp_lineal(tareas, clave=None):
+```
+
+Primero ordena las tareas:
+
+```python
+tareas = sorted(tareas, key=clave or (lambda t: t.fin))
+```
+
+Después busca la última tarea compatible:
 
 ```python
 for i in range(n):
     for j in range(i - 1, -1, -1):
         if tareas[j].fin <= tareas[i].inicio:
-            p[i] = j
+            compatibles[i] = j
             break
 ```
 
-El programa revisa las tareas anteriores **una por una**, desde la más cercana hacia atrás.
+La búsqueda comienza desde la tarea anterior y retrocede hasta encontrar una compatible.
 
-Por eso es:
+Como puede revisar muchas tareas para cada posición:
 
 ```text
-Búsqueda lineal → O(n)
+Búsqueda compatible → O(n)
 ```
 
-para cada tarea.
+y esto se hace para `n` tareas:
 
-En total:
+```text
+O(n) × O(n) = O(n²)
+```
+
+Por eso el enfoque B tiene complejidad:
 
 ```text
 O(n²)
@@ -536,147 +308,140 @@ O(n²)
 
 ---
 
-# 11. C — Búsqueda binaria
+# 10. Reto 3 — La decisión de tomar o no tomar
 
-Cuando:
+Esta es **la línea que deben señalar para el Reto 3**:
 
 ```python
-binaria=True
+dp[i] = max(tomar, no_tomar)
 ```
 
-se utiliza:
+Antes se calculan las dos posibilidades.
+
+### Tomar
+
+```python
+tomar = tareas[i].ganancia
+
+if compatibles[i] != -1:
+    tomar += dp[compatibles[i]]
+```
+
+Significa:
+
+> Ejecutar la tarea actual y sumar la mejor ganancia obtenida con una tarea compatible anterior.
+
+En términos del problema:
+
+```text
+ganancia de la tarea actual
++
+mejor solución compatible
+```
+
+### No tomar
+
+```python
+no_tomar = dp[i - 1] if i else 0
+```
+
+Significa:
+
+> No ejecutar la tarea actual y conservar la mejor solución encontrada anteriormente.
+
+### La decisión
+
+```python
+dp[i] = max(tomar, no_tomar)
+```
+
+El algoritmo compara ambas alternativas y conserva la que tenga mayor ganancia.
+
+### 🎯 Frase para memorizar
+
+> **"Tomar significa ejecutar la tarea actual junto con la mejor solución compatible anterior; no tomar significa conservar la solución anterior. `max` selecciona la alternativa con mayor ganancia."**
+
+El Reto 3 pide precisamente explicar esta recurrencia en términos de la decisión de asignación del recurso. 
+
+---
+
+# 11. Enfoque C — DP + búsqueda binaria
+
+La función es:
+
+```python
+def dp_binaria(tareas):
+```
+
+Primero se ordenan las tareas por finalización:
+
+```python
+tareas = sorted(tareas, key=lambda t: t.fin)
+```
+
+Después se crea una lista con los tiempos de finalización:
 
 ```python
 finales = [t.fin for t in tareas]
 ```
 
-y:
+La última tarea compatible se encuentra mediante:
 
 ```python
-p[i] = bisect.bisect_right(
-    finales, t.inicio, 0, i
+bisect.bisect_right(
+    finales, tareas[i].inicio, 0, i
 ) - 1
 ```
 
-Aquí se utiliza búsqueda binaria para encontrar rápidamente la última tarea compatible.
-
-La búsqueda pasa de:
-
-```text
-O(n)
-```
-
-a:
+En lugar de revisar una por una las tareas anteriores, la búsqueda binaria reduce la búsqueda a:
 
 ```text
 O(log n)
 ```
 
-Por eso el enfoque C tiene una complejidad general de:
+Por lo tanto:
 
 ```text
+Ordenamiento       → O(n log n)
+Búsquedas          → O(n log n)
+Programación DP    → O(n)
+--------------------------------
+Complejidad final  → O(n log n)
+```
+
+---
+
+# 12. Diferencia entre B y C
+
+La lógica de la programación dinámica es la misma.
+
+La diferencia está en encontrar la tarea compatible:
+
+### B
+
+```text
+Búsqueda lineal
+      ↓
+O(n) por tarea
+      ↓
+O(n²)
+```
+
+### C
+
+```text
+Búsqueda binaria
+      ↓
+O(log n) por tarea
+      ↓
 O(n log n)
 ```
 
----
-
-# 12. Reto 3 — La parte MÁS importante de la DP
-
-La línea que deben señalar es:
-
-```python
-tabla[i] = max(tomar, no_tomar)
-```
-
-Esta es la **recurrencia de programación dinámica**.
-
-Antes de llegar a ella, el código calcula las dos posibilidades.
-
-### Opción 1: tomar
-
-```python
-tomar = tareas[i].ganancia
-```
-
-Si existe una tarea compatible:
-
-```python
-if p[i] != -1:
-    tomar += tabla[p[i]]
-```
-
-Significa:
-
-```text
-Ganancia de la tarea actual
-+
-mejor ganancia compatible anterior
-```
+Por eso ambos deben encontrar **la misma ganancia óptima**, pero C debería tardar considerablemente menos con muchos datos.
 
 ---
 
-### Opción 2: no tomar
-
-```python
-no_tomar = tabla[i - 1] if i else 0
-```
-
-Significa:
-
-> Ignoramos la tarea actual y conservamos la mejor solución que ya teníamos.
-
----
-
-### Finalmente:
-
-```python
-tabla[i] = max(tomar, no_tomar)
-```
-
-La DP compara:
-
-```text
-              ┌── Tomar
-              │
-tabla[i] = max
-              │
-              └── No tomar
-```
-
-Y guarda la alternativa con mayor ganancia.
-
-### Qué decir en la exposición
-
-> "La recurrencia representa las dos decisiones posibles sobre la tarea actual: tomarla y sumar su ganancia a la mejor solución compatible anterior, o no tomarla y conservar la solución anterior. El máximo selecciona la alternativa que produce mayor ganancia."
-
-**Esta es la explicación que deben memorizar para el Reto 3.**
-
----
-
-# 13. Reconstrucción de las tareas
-
-Después de calcular la tabla, el programa recupera cuáles tareas fueron seleccionadas:
-
-```python
-seleccion = []
-i = n - 1
-```
-
-Luego:
-
-```python
-if tabla[i] != anterior:
-    seleccion.append(tareas[i])
-    i = p[i]
-else:
-    i -= 1
-```
-
-La idea es recorrer la tabla hacia atrás para descubrir **qué decisiones produjeron la ganancia óptima**.
-
----
-
-# 14. Reto 4 — Comparación de rendimiento
+# 13. Reto 4 — Benchmark con 100.000 tareas
 
 La función es:
 
@@ -684,33 +449,33 @@ La función es:
 def benchmark():
 ```
 
-El tamaño solicitado es:
+El tamaño está establecido en:
 
 ```python
 n = 100_000
 ```
 
-Se generan:
+Se generan las tareas:
 
 ```python
 tareas = generar(n)
 ```
 
-Después se mide B:
+Después se ejecuta B:
 
 ```python
-inicio = time.perf_counter()
-b = dp(tareas)
-tiempo_b = time.perf_counter() - inicio
+b = dp_lineal(tareas)
 ```
 
-Y C:
+y se mide su tiempo.
+
+Después se ejecuta C:
 
 ```python
-inicio = time.perf_counter()
-c = dp(tareas, binaria=True)
-tiempo_c = time.perf_counter() - inicio
+c = dp_binaria(tareas)
 ```
+
+y también se mide.
 
 Finalmente se comparan:
 
@@ -719,138 +484,95 @@ print(f"DP lineal : {tiempo_b:.4f} s")
 print(f"DP binaria: {tiempo_c:.4f} s")
 ```
 
-Y se verifica que ambas obtengan la misma ganancia:
+También se verifica que ambas obtengan la misma ganancia:
 
 ```python
 print(f"¿Misma solución?: {b[0] == c[0]}")
 ```
 
-### Qué deben explicar
+### ¿Qué deben explicar?
 
-B:
+> "El enfoque B utiliza búsqueda lineal y tiene complejidad O(n²), mientras que C utiliza búsqueda binaria y tiene complejidad O(n log n). Por eso, al aumentar el número de tareas, la diferencia de tiempo se hace significativa."
 
-```text
-Búsqueda lineal
-O(n) por tarea
-↓
-O(n²)
-```
-
-C:
-
-```text
-Búsqueda binaria
-O(log n) por tarea
-↓
-O(n log n)
-```
-
-Por eso C debería ser considerablemente más rápida cuando `n` es grande.
+El Reto 4 específicamente solicita la ejecución con `N = 100.000`, la comparación de tiempos y la explicación matemática de la mejora. 
 
 ---
 
-# 15. Qué debe saber cada integrante
+# 14. ¿Qué debe señalar cada integrante?
 
-Aunque cada persona pueda explicar una parte, **todos deben conocer estas líneas** porque el profesor puede seleccionar a cualquiera.
+Todos deberían conocer estas partes:
 
-### 🟢 Greedy
-
-```python
-tareas = sorted(tareas, key=lambda t: t.ganancia, reverse=True)
-```
-
-**Saber explicar:** ordena por mayor ganancia y por qué Greedy puede fallar.
+| Tema               | Línea / función                     | Qué explicar                             |
+| ------------------ | ----------------------------------- | ---------------------------------------- |
+| **Greedy**         | `greedy()`                          | Selecciona por mayor ganancia            |
+| **Reto 1**         | `reto1()`                           | Greedy puede producir una ganancia menor |
+| **Reto 2**         | `sorted(... t.fin)`                 | La DP necesita orden por finalización    |
+| **Compatibilidad** | `tareas[j].fin <= tareas[i].inicio` | Determina si dos tareas pueden coexistir |
+| **Reto 3**         | `dp[i] = max(tomar, no_tomar)`      | Decide tomar o no tomar                  |
+| **B**              | `dp_lineal()`                       | Búsqueda lineal → O(n²)                  |
+| **C**              | `dp_binaria()`                      | Búsqueda binaria → O(n log n)            |
+| **Reto 4**         | `benchmark()`                       | Comparación con 100.000 tareas           |
 
 ---
 
-### 🔵 Reto 1
+# 15. Mapa rápido para la exposición
+
+Si el profesor pregunta por cada reto:
+
+### 🟢 Reto 1
+
+**Señalar:**
 
 ```python
 g = greedy(tareas)
-d = dp(tareas)
+d = dp_lineal(tareas)
 ```
 
-**Saber explicar:** Greedy puede obtener una ganancia menor que DP.
+**Explicar:**
+
+> Greedy puede tomar una decisión local que produzca una ganancia total menor que la solución óptima.
 
 ---
 
 ### 🟠 Reto 2
 
+**Señalar:**
+
 ```python
 tareas = sorted(tareas, key=clave or (lambda t: t.fin))
 ```
 
-**Saber explicar:** por qué el orden por `fin` es necesario.
+**Explicar:**
 
-También:
-
-```python
-if tareas[j].fin <= tareas[i].inicio:
-```
-
-**Saber explicar:** cómo se determina si dos tareas son compatibles.
+> La DP necesita las tareas ordenadas por finalización para poder encontrar correctamente la última tarea compatible.
 
 ---
 
 ### 🔴 Reto 3
 
+**Señalar:**
+
 ```python
-tabla[i] = max(tomar, no_tomar)
+dp[i] = max(tomar, no_tomar)
 ```
 
-**Saber explicar:**
+**Explicar:**
 
-```text
-tomar = tarea actual + solución compatible
-no tomar = solución anterior
-max = elegir mayor ganancia
-```
+> Se compara ejecutar la tarea actual con conservar la mejor solución anterior.
 
 ---
 
 ### 🟣 Reto 4
 
-```python
-b = dp(tareas)
-```
-
-vs.
+**Señalar:**
 
 ```python
-c = dp(tareas, binaria=True)
+b = dp_lineal(tareas)
+c = dp_binaria(tareas)
 ```
 
-**Saber explicar:**
+**Explicar:**
 
-```text
-B → O(n²)
-C → O(n log n)
-```
+> B utiliza búsqueda lineal y es O(n²); C utiliza búsqueda binaria y es O(n log n).
 
 ---
-
-# 16. Resumen para la sustentación
-
-Si tienen poco tiempo para estudiar, aprendan esta tabla:
-
-| Reto       | Línea que señalar                          | Qué decir                                                                                         |
-| ---------- | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| **Reto 1** | `g = greedy(tareas)` / `d = dp(tareas)`    | Greedy puede tomar una decisión local que impide obtener la mayor ganancia global                 |
-| **Reto 2** | `tareas = sorted(... t.fin)`               | La DP necesita las tareas ordenadas por finalización para encontrar correctamente las compatibles |
-| **Reto 2** | `tareas[j].fin <= tareas[i].inicio`        | La tarea anterior debe terminar antes o cuando comienza la actual                                 |
-| **Reto 3** | `tabla[i] = max(tomar, no_tomar)`          | Comparamos tomar la tarea contra no tomarla                                                       |
-| **Reto 4** | `dp(tareas)` vs `dp(tareas, binaria=True)` | Lineal O(n²) frente a binaria O(n log n)                                                          |
-
----
-
-## ⚠️ Una corrección importante para el Reto 2
-
-No memoricen que **"ordenar por inicio siempre dará X"** o **"ordenar por ganancia siempre dará Y"**. El resultado depende del conjunto de tareas.
-
-Lo que deben defender es el **principio**:
-
-> **El algoritmo de programación dinámica está construido bajo el supuesto de que las tareas están ordenadas por tiempo de finalización. Cambiar ese orden rompe la relación entre los índices y la compatibilidad temporal de las tareas.**
-
----
-
-
